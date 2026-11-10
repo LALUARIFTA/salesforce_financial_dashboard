@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Salesforce Financial Workspace — Interactive Dashboard</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Plus Jakarta Sans & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'Inter', 'sans-serif'],
+            mono: ['Inter', 'monospace']
+          },
+          colors: {
+            limeAccent: '#b4ff29',
+            limeHover: '#c4ff54',
+            darkBg: '#141718',
+            darkCard: '#1c2022',
+            darkCardHover: '#24292c',
+            darkInner: '#181b1c',
+            lightSurface: '#f4f5f7'
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+    }
+
+    body {
+      background: radial-gradient(circle at 50% 20%, #e4e6eb 0%, #cfd2d8 60%, #bfc3cb 100%);
+      font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow-x: hidden;
+    }
+
+    /* Fixed Tablet Viewport Frame - Strict uniform size across all menus */
+    .tablet-frame {
+      width: 1280px;
+      height: 830px;
+      min-width: 1280px;
+      min-height: 830px;
+      max-width: 1280px;
+      max-height: 830px;
+      background-color: #141718;
+      background-image: 
+        radial-gradient(circle at 18% 15%, rgba(180, 255, 41, 0.04) 0%, transparent 38%),
+        radial-gradient(circle at 85% 25%, rgba(255, 255, 255, 0.03) 0%, transparent 40%);
+      border: 14px solid #0b0d0f;
+      border-radius: 40px;
+      box-shadow: 
+        0 35px 80px -15px rgba(0, 0, 0, 0.55),
+        0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+        0 0 0 2px #26292e;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Responsive scale down for smaller laptop screens while keeping strict aspect & fixed layout */
+    @media (max-width: 1320px), (max-height: 860px) {
+      .frame-scaler {
+        transform: scale(0.9);
+        transform-origin: center center;
+      }
+    }
+    @media (max-width: 1160px), (max-height: 760px) {
+      .frame-scaler {
+        transform: scale(0.8);
+        transform-origin: center center;
+      }
+    }
+    @media (max-width: 1024px) {
+      .frame-scaler {
+        transform: scale(0.7);
+        transform-origin: center center;
+      }
+    }
+
+    @media (max-height: 760px) and (min-width: 1025px) {
+      .frame-scaler {
+        transform: scale(0.65);
+        transform-origin: center center;
+      }
+    }
+
+    /* Sleek Custom Scrollbars for Sub-Menus & Detail Breakdown */
+    .custom-scroll::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: rgba(150, 155, 165, 0.35);
+      border-radius: 9999px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb:hover {
+      background: rgba(150, 155, 165, 0.6);
+    }
+
+    .custom-scroll-dark::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    .custom-scroll-dark::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 9999px;
+    }
+    .custom-scroll-dark::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.16);
+      border-radius: 9999px;
+    }
+    .custom-scroll-dark::-webkit-scrollbar-thumb:hover {
+      background: #b4ff29;
+    }
+
+    /* Signature Top-Center Inverted Dark Notch on the White Container */
+    .center-notch-wrapper {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #141718;
+      padding: 0 10px 8px 10px;
+      border-bottom-left-radius: 22px;
+      border-bottom-right-radius: 22px;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    /* Inverted rounded ears on left and right of the notch */
+    .center-notch-wrapper::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -18px;
+      width: 18px;
+      height: 18px;
+      background: transparent;
+      border-top-right-radius: 18px;
+      box-shadow: 6px -6px 0 6px #141718;
+      pointer-events: none;
+    }
+    .center-notch-wrapper::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      right: -18px;
+      width: 18px;
+      height: 18px;
+      background: transparent;
+      border-top-left-radius: 18px;
+      box-shadow: -6px -6px 0 6px #141718;
+      pointer-events: none;
+    }
+
+    /* Diagonal Hatched Pattern for the '+' Add Milestone Card */
+    .hatched-card {
+      background-color: #1d2123;
+      background-image: repeating-linear-gradient(
+        -45deg,
+        rgba(255, 255, 255, 0.03),
+        rgba(255, 255, 255, 0.03) 6px,
+        transparent 6px,
+        transparent 12px
+      );
+    }
+
+    /* Menu Page & Submenu Transition Animations */
+    @keyframes menuViewEnter {
+      0% {
+        opacity: 0;
+        transform: translateY(10px) scale(0.992);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    @keyframes listStaggerEnter {
+      0% {
+        opacity: 0;
+        transform: translateX(-10px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    @keyframes detailCardFade {
+      0% {
+        opacity: 0.25;
+        transform: scale(0.985);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .animate-menu-enter {
+      animation: menuViewEnter 0.36s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .animate-list-item {
+      animation: listStaggerEnter 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .animate-detail-switch {
+      animation: detailCardFade 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    /* Sliding Pill Transition */
+    #topNavPill {
+      transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1), width 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    /* Payout Method Cards Spring Animation */
+    .payout-card {
+      transition: all 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    /* Progress Bar Fill Transition */
+    .timeline-bar-fill {
+      transition: width 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="frame-scaler flex flex-col items-center">
+    <!-- MAIN TABLET CONTAINER (Strict Uniform Size: 1280x830) -->
+    <div class="tablet-frame px-7 py-5 select-none" id="appFrame">
+
+      <!-- ==================== 1. TOP NAVIGATION BAR ==================== -->
+      <header class="flex items-center justify-between h-[48px] shrink-0 z-30">
+        <!-- Left: Logo + Grid Switcher -->
+        <div class="flex items-center gap-3">
+          <button onclick="resetToDefaultView()" class="flex items-center gap-2.5 group focus:outline-none">
+            <!-- Salesforce Asterisk Star SVG -->
+            <div class="w-7 h-7 flex items-center justify-center text-white group-hover:text-limeAccent transition-colors duration-300">
+              <svg class="w-6 h-6 transition-transform duration-500 group-hover:rotate-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <line x1="12" y1="2" x2="12" y2="22"></line>
+                <line x1="2" y1="12" x2="22" y2="12"></line>
+                <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+                <line x1="19.07" y1="4.93" x2="4.93" y2="19.07"></line>
+              </svg>
+            </div>
+            <span class="text-white font-bold text-[17px] tracking-tight">salesforce</span>
+          </button>
+
+          <!-- App Launcher Circular Icon -->
+          <button onclick="showQuickDrawer('Workspace Switcher', 'Switch between Salesforce Financial Cloud, Revenue Intelligence, and Billing Automation modules.')" 
+                  title="App Launcher"
+                  class="ml-3 w-9 h-9 rounded-full bg-[#1c2022] border border-white/10 text-gray-300 hover:text-white hover:border-white/25 flex items-center justify-center transition-all active:scale-95">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <rect x="4" y="4" width="6" height="6" rx="1.5"></rect>
+              <rect x="14" y="4" width="6" height="6" rx="1.5"></rect>
+              <rect x="4" y="14" width="6" height="6" rx="1.5"></rect>
+              <rect x="14" y="14" width="6" height="6" rx="1.5"></rect>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Center: White Pill Main Menu with Animated Sliding Lime Pill -->
+        <nav class="bg-[#f4f5f7] rounded-full p-1 flex items-center shadow-lg relative">
+          <!-- Left dark circular wallet icon inside the white pill -->
+          <button onclick="triggerInstantPayoutModal()" title="Wallet & Balance" class="w-8 h-8 rounded-full bg-[#181b1c] text-white flex items-center justify-center hover:bg-black transition-transform active:scale-90 mr-1 shrink-0 z-10">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="5" width="20" height="14" rx="3"></rect>
+              <line x1="2" y1="10" x2="22" y2="10"></line>
+            </svg>
+          </button>
+
+          <!-- Menu Tabs Container -->
+          <div id="mainMenuContainer" class="relative flex items-center">
+            <!-- Animated Sliding Neon-Lime Pill -->
+            <div id="topNavPill" class="absolute top-0 bottom-0 bg-[#b4ff29] rounded-full shadow-sm z-0 pointer-events-none"></div>
+
+            <button data-menu="estimates" onclick="switchMainMenu('estimates')" class="main-nav-btn relative z-10 px-4 py-1.5 rounded-full text-[12px] font-semibold transition-colors duration-200 flex items-center gap-1.5 text-gray-600 hover:text-black">
+              <span class="nav-dot hidden w-1.5 h-1.5 rounded-full bg-[#111415]"></span>
+              <span>Estimates</span>
+            </button>
+
+            <button data-menu="invoices" onclick="switchMainMenu('invoices')" class="main-nav-btn relative z-10 px-4 py-1.5 rounded-full text-[12px] font-semibold transition-colors duration-200 flex items-center gap-1.5 text-[#111415]">
+              <span class="nav-dot w-1.5 h-1.5 rounded-full bg-[#111415]"></span>
+              <span>Invoices</span>
+            </button>
+
+            <button data-menu="payments" onclick="switchMainMenu('payments')" class="main-nav-btn relative z-10 px-4 py-1.5 rounded-full text-[12px] font-semibold transition-colors duration-200 flex items-center gap-1.5 text-gray-600 hover:text-black">
+              <span class="nav-dot hidden w-1.5 h-1.5 rounded-full bg-[#111415]"></span>
+              <span>Payments</span>
+            </button>
+
+            <button data-menu="recurring" onclick="switchMainMenu('recurring')" class="main-nav-btn relative z-10 px-4 py-1.5 rounded-full text-[12px] font-semibold transition-colors duration-200 flex items-center gap-1.5 text-gray-600 hover:text-black">
+              <span class="nav-dot hidden w-1.5 h-1.5 rounded-full bg-[#111415]"></span>
+              <span>Recurring Invoices</span>
+            </button>
+
+            <button data-menu="checkouts" onclick="switchMainMenu('checkouts')" class="main-nav-btn relative z-10 px-4 py-1.5 rounded-full text-[12px] font-semibold transition-colors duration-200 flex items-center gap-1.5 text-gray-600 hover:text-black">
+              <span class="nav-dot hidden w-1.5 h-1.5 rounded-full bg-[#111415]"></span>
+              <span>Checkouts</span>
+            </button>
+          </div>
+        </nav>
+
+        <!-- Right: 6 Quick Tool Icons + Notification + Settings + Avatar -->
+        <div class="flex items-center gap-1.5">
+          <!-- 6 Utility Circular Buttons matching reference image -->
+          <button onclick="showQuickDrawer('Smart Ledger & Receipts', 'All 142 automated ledger entries are synced with Stripe and QuickBooks.')" title="Receipts" class="w-8 h-8 rounded-full bg-[#1c2022] border border-white/10 text-gray-400 hover:text-white hover:border-limeAccent/50 flex items-center justify-center transition-all active:scale-90">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="8" y1="13" x2="16" y2="13"></line>
+              <line x1="8" y1="17" x2="13" y2="17"></line>
+            </svg>
+          </button>
+          <button onclick="showQuickDrawer('Corporate Cards', '3 active virtual corporate cards linked to instant payout settlements.')" title="Virtual Cards" class="w-8 h-8 rounded-full bg-[#1c2022] border border-white/10 text-gray-400 hover:text-white hover:border-limeAccent/50 flex items-center justify-center transition-all active:scale-90">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+              <line x1="7" y1="9" x2="17" y2="9"></line>
+              <line x1="7" y1="14" x2="12" y2="14"></line>
+            </svg>
+          </button>
+          <button onclick="showQuickDrawer('Merchant Treasury Vault', 'Treasury yield account currently earning 4.85% APY on idle invoice reserves.')" title="Treasury Vault" class="w-8 h-8 rounded-full bg-[#1c2022] border border-white/10 text-gray-400 hover:text-white hover:border-limeAccent/50 flex items-center justify-center transition-all active:scale-90">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <path d="M16 10a4 4 0 0 1-8 0"></path>
+            </svg>
+          </button>
+          <button onclick="showQuickDrawer('Tax & Audit Compliance', 'Q4 VAT & Sales Tax filings verified across 14 jurisdictions.')" title="Compliance" class="w-8 h-8 rounded-full bg-[#1c2022] border border-white/10 text-gray-400 hover:text-white hover:border-limeAccent/50 flex items-center justify-center transition-all active:scale-90">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+          </button>
+          <button onclick="showQuickDrawer('Revenue Forecasting', 'Projected cash inflow for next 30 days is +24.8% above Q3 benchmark.')" title="Reports" class="w-8 h-8 rounded-full bg-[#1c2022] border border-white/10 text-gray-400 hover:text-white hover:border-limeAccent/50 flex items-center justify-center transition-all active:scale-90">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+          </button>
+          <button onclick="showQuickDrawer('Client Directory (48 Enterprise Accounts)', 'BlueRock Pvt Ltd, Vertex Global, Aura Systems, Lumina AI, and 44 more active clients.')" title="Customers" class="w-8 h-8 rounded-full bg-[#1c2022] border border-white/10 text-gray-400 hover:text-white hover:border-limeAccent/50 flex items-center justify-center transition-all active:scale-90 mr-2">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+          </button>
+
+          <!-- Notification Bell -->
+          <button onclick="showToast('3 new invoice views recorded in the last 15 minutes')" title="Notifications" class="relative w-8 h-8 rounded-full bg-[#1c2022] border border-white/10 text-gray-300 hover:text-white flex items-center justify-center transition-all">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
+            <span class="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-limeAccent"></span>
+          </button>
+
+          <!-- Settings Icon -->
+          <button onclick="showQuickDrawer('Workspace Preferences', 'Instant Payouts: Enabled • Auto-Reminders: Every 3 Days • Currency: USD ($)')" title="Settings" class="w-8 h-8 rounded-full bg-[#1c2022] border border-white/10 text-gray-300 hover:text-white flex items-center justify-center transition-all">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+          </button>
+
+          <!-- User Profile Avatar -->
+          <button onclick="showQuickDrawer('Alex Morgan — VP of Finance', 'Salesforce Enterprise Admin • Last payout settlement: Today at 14:20 EST')" class="ml-1 w-9 h-9 rounded-full p-0.5 bg-gradient-to-tr from-limeAccent/60 to-white/30 hover:scale-105 transition-transform">
+            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80" 
+                 onerror="this.src='https://placehold.co/80x80/222629/ffffff?text=AM'"
+                 alt="Profile" class="w-full h-full rounded-full object-cover" />
+          </button>
+        </div>
+      </header>
+
+      <!-- ==================== MAIN DYNAMIC WORKSPACE WRAPPER ==================== -->
+      <div id="menuWorkspace" class="flex-1 flex flex-col justify-between mt-3 overflow-hidden">
+
+        <!-- ==================== 2. PAGE HEADER ROW ==================== -->
+        <div class="flex items-center justify-between h-[46px] shrink-0">
+          <div class="flex items-center gap-3.5">
+            <button onclick="cyclePreviousMenu()" title="Previous Menu" class="w-9 h-9 rounded-full bg-[#1c2022] border border-white/10 text-gray-300 hover:text-white hover:border-white/30 flex items-center justify-center transition-all active:scale-90">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+              </svg>
+            </button>
+            <h1 id="pageTitle" class="text-[32px] font-semibold text-white tracking-tight leading-none">Invoices</h1>
+          </div>
+
+          <div class="flex items-center gap-2.5">
+            <!-- Sort / Display Sliders Button -->
+            <button onclick="toggleSortOrder()" title="Sort List by Amount / Due Date" class="w-9 h-9 rounded-full bg-[#1c2022] border border-white/10 text-gray-300 hover:text-limeAccent hover:border-limeAccent/40 flex items-center justify-center transition-all active:scale-90">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <line x1="4" y1="21" x2="4" y2="14"></line>
+                <line x1="4" y1="10" x2="4" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12" y2="3"></line>
+                <line x1="20" y1="21" x2="20" y2="16"></line>
+                <line x1="20" y1="12" x2="20" y2="3"></line>
+                <line x1="1" y1="14" x2="7" y2="14"></line>
+                <line x1="9" y1="8" x2="15" y2="8"></line>
+                <line x1="17" y1="16" x2="23" y2="16"></line>
+              </svg>
+            </button>
+
+            <!-- Create New Record Pill Button -->
+            <button onclick="openCreateModal()" class="h-9 px-4 rounded-full bg-[#1c2022] hover:bg-[#252a2d] border border-white/15 hover:border-limeAccent/50 text-white text-[12px] font-medium flex items-center gap-2 transition-all active:scale-95 shadow-sm">
+              <svg class="w-3.5 h-3.5 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="4"></rect>
+                <line x1="12" y1="8" x2="12" y2="16"></line>
+                <line x1="8" y1="12" x2="16" y2="12"></line>
+              </svg>
+              <span id="createBtnLabel">Create an invoice</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- ==================== 3. TOP KPI & INSTANT PAYOUT ROW (Fixed Height: 205px) ==================== -->
+        <div class="grid grid-cols-12 gap-4 h-[205px] shrink-0 mt-2">
+          
+          <!-- LEFT CARD: 3 KPIs + Timeline Progress Bars + Overlapping Avatars (7 cols) -->
+          <div class="col-span-7 bg-[#1c2022]/95 border border-white/[0.07] rounded-[26px] p-5 flex flex-col justify-between relative overflow-hidden">
+            <!-- Top 3 KPI Columns -->
+            <div class="grid grid-cols-3 gap-4">
+              <div>
+                <p id="kpi1Label" class="text-[11.5px] text-gray-400 font-medium mb-1">Overdue</p>
+                <div class="flex items-baseline gap-1 text-white">
+                  <span class="text-sm text-gray-400 font-normal">$</span>
+                  <span id="kpi1Value" class="text-[25px] font-semibold tracking-tight">31,211.00</span>
+                </div>
+              </div>
+
+              <div>
+                <p id="kpi2Label" class="text-[11.5px] text-gray-400 font-medium mb-1">Due within next month</p>
+                <div class="flex items-baseline gap-1 text-white">
+                  <span class="text-sm text-gray-400 font-normal">$</span>
+                  <span id="kpi2Value" class="text-[25px] font-semibold tracking-tight">172,560.00</span>
+                </div>
+              </div>
+
+              <div>
+                <p id="kpi3Label" class="text-[11.5px] text-gray-400 font-medium mb-1">Average time to get paid</p>
+                <div class="flex items-baseline gap-1.5 text-white">
+                  <span id="kpi3Value" class="text-[25px] font-semibold tracking-tight">12</span>
+                  <span id="kpi3Unit" class="text-xs text-gray-400 font-normal">days</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Middle Timeline Progress Bars (Sep-Oct, Nov, Dec) -->
+            <div class="grid grid-cols-12 gap-3 items-center mt-2">
+              <!-- Segment 1: Sep - Oct -->
+              <div class="col-span-4">
+                <div class="flex justify-between text-[11px] text-gray-400 mb-1.5 font-medium">
+                  <span id="period1Start">Sep</span>
+                  <span id="period1End">Oct</span>
+                </div>
+                <div class="w-full h-2.5 bg-[#2a2f33] rounded-full overflow-hidden p-[1px]">
+                  <div id="bar1Fill" class="timeline-bar-fill h-full bg-limeAccent rounded-full" style="width: 88%"></div>
+                </div>
+              </div>
+
+              <!-- Segment 2: Nov -->
+              <div class="col-span-5">
+                <div class="flex justify-between text-[11px] text-gray-400 mb-1.5 font-medium">
+                  <span id="period2Start">Nov</span>
+                </div>
+                <div class="w-full h-2.5 bg-[#2a2f33] rounded-full overflow-hidden p-[1px]">
+                  <div id="bar2Fill" class="timeline-bar-fill h-full bg-limeAccent rounded-full" style="width: 42%"></div>
+                </div>
+              </div>
+
+              <!-- Segment 3: Dec -->
+              <div class="col-span-3">
+                <div class="flex justify-between text-[11px] text-gray-400 mb-1.5 font-medium">
+                  <span id="period3Start">Dec</span>
+                </div>
+                <div class="w-full h-2.5 bg-[#2a2f33] rounded-full overflow-hidden p-[1px]">
+                  <div id="bar3Fill" class="timeline-bar-fill h-full bg-limeAccent rounded-full" style="width: 34%"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bottom Overlapping Client Avatars Row -->
+            <div class="grid grid-cols-12 gap-3 items-center pt-1">
+              <!-- Avatars Group 1 -->
+              <div class="col-span-4 flex items-center justify-center -space-x-2">
+                <img onclick="filterByAvatarClient('BlueRock')" title="Maria Jones • BlueRock" class="w-7 h-7 rounded-full border-2 border-[#1c2022] object-cover cursor-pointer hover:scale-110 hover:z-20 transition-transform" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&auto=format&fit=crop&q=80" onerror="this.src='https://placehold.co/60x60/2a2f33/fff?text=MJ'" />
+                <img onclick="filterByAvatarClient('Vertex')" title="David Kim • Vertex Global" class="w-7 h-7 rounded-full border-2 border-[#1c2022] object-cover cursor-pointer hover:scale-110 hover:z-20 transition-transform" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&auto=format&fit=crop&q=80" onerror="this.src='https://placehold.co/60x60/2a2f33/fff?text=DK'" />
+                <img onclick="filterByAvatarClient('Aura')" title="Elena Rostova • Aura Systems" class="w-7 h-7 rounded-full border-2 border-[#1c2022] object-cover cursor-pointer hover:scale-110 hover:z-20 transition-transform" src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=80&auto=format&fit=crop&q=80" onerror="this.src='https://placehold.co/60x60/2a2f33/fff?text=ER'" />
+                <img onclick="filterByAvatarClient('Lumina')" title="Marcus Vance • Lumina AI" class="w-7 h-7 rounded-full border-2 border-[#1c2022] object-cover cursor-pointer hover:scale-110 hover:z-20 transition-transform" src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&auto=format&fit=crop&q=80" onerror="this.src='https://placehold.co/60x60/2a2f33/fff?text=MV'" />
+                <img onclick="filterByAvatarClient('Kinetix')" title="Sophia Chen • Kinetix Cloud" class="w-7 h-7 rounded-full border-2 border-[#1c2022] object-cover cursor-pointer hover:scale-110 hover:z-20 transition-transform" src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=80&auto=format&fit=crop&q=80" onerror="this.src='https://placehold.co/60x60/2a2f33/fff?text=SC'" />
+                <img onclick="filterByAvatarClient('Hyperion')" title="Lucas Wright • Hyperion Labs" class="w-7 h-7 rounded-full border-2 border-[#1c2022] object-cover cursor-pointer hover:scale-110 hover:z-20 transition-transform" src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=80&auto=format&fit=crop&q=80" onerror="this.src='https://placehold.co/60x60/2a2f33/fff?text=LW'" />
+              </div>
+
+              <!-- Avatars Group 2 -->
+              <div class="col-span-5 flex items-center justify-center -space-x-2">
+                <img onclick="filterByAvatarClient('Novus')" title="Liam O'Connor • Novus Media" class="w-7 h-7 rounded-full border-2 border-[#1c2022] object-cover cursor-pointer hover:scale-110 hover:z-20 transition-transform" src="https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=80&auto=format&fit=crop&q=80" onerror="this.src='https://placehold.co/60x60/2a2f33/fff?text=LO'" />
+                <img onclick="filterByAvatarClient('Solaris')" title="Hannah Abbott • Solaris Tech" class="w-7 h-7 rounded-full border-2 border-[#1c2022] object-cover cursor-pointer hover:scale-110 hover:z-20 transition-transform" src="https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=80&auto=format&fit=crop&q=80" onerror="this.src='https://placehold.co/60x60/2a2f33/fff?text=HA'" />
+                <img onclick="filterByAvatarClient('Zephyr')" title="Noah Brooks • Zephyr Logistics" class="w-7 h-7 rounded-full border-2 border-[#1c2022] object-cover cursor-pointer hover:scale-110 hover:z-20 transition-transform" src="https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=80&auto=format&fit=crop&q=80" onerror="this.src='https://placehold.co/60x60/2a2f33/fff?text=NB'" />
+              </div>
+
+              <!-- Avatars Group 3 -->
+              <div class="col-span-3 flex items-center justify-center -space-x-2">
+                <img onclick="filterByAvatarClient('Aether')" title="Ryan Patel • Aether Corp" class="w-7 h-7 rounded-full border-2 border-[#1c2022] object-cover cursor-pointer hover:scale-110 hover:z-20 transition-transform" src="https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=80&auto=format&fit=crop&q=80" onerror="this.src='https://placehold.co/60x60/2a2f33/fff?text=RP'" />
+                <img onclick="filterByAvatarClient('Pulse')" title="Chloe Evans • Pulse Health" class="w-7 h-7 rounded-full border-2 border-[#1c2022] object-cover cursor-pointer hover:scale-110 hover:z-20 transition-transform" src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=80&auto=format&fit=crop&q=80" onerror="this.src='https://placehold.co/60x60/2a2f33/fff?text=CE'" />
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT CARD: Available for Instant Payout & Selectable Gateway Cards (5 cols) -->
+          <div class="col-span-5 bg-[#1c2022]/95 border border-white/[0.07] rounded-[26px] p-5 flex flex-col justify-between relative overflow-hidden">
+            <!-- Top Row -->
+            <div class="flex items-start justify-between">
+              <div>
+                <p id="payoutTitle" class="text-[11.5px] text-gray-400 font-medium mb-1">Available for Instant Payout</p>
+                <div class="flex items-center gap-3">
+                  <div class="flex items-baseline gap-1 text-white">
+                    <span class="text-sm text-gray-400 font-normal">$</span>
+                    <span id="payoutAmount" class="text-[26px] font-semibold tracking-tight">214,390.00</span>
+                  </div>
+                  <span id="payoutBadge" class="px-2.5 py-0.5 rounded-full bg-[#262b2e] border border-white/10 text-[10.5px] text-gray-300 font-medium">Expects</span>
+                </div>
+              </div>
+
+              <button onclick="triggerInstantPayoutModal()" title="Expand Payout Analytics" class="w-8 h-8 rounded-full bg-[#24292c] border border-white/10 text-gray-300 hover:text-limeAccent flex items-center justify-center transition-all hover:rotate-12">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="7" y1="17" x2="17" y2="7"></line>
+                  <polyline points="7 7 17 7 17 17"></polyline>
+                </svg>
+              </button>
+            </div>
+
+            <!-- Bottom Row: 3 Interactive Gateway Cards + Pay out now button -->
+            <div class="flex items-end justify-between gap-2.5 pt-2">
+              <div class="flex items-end gap-2 flex-1">
+                <!-- Card 1: Visa -->
+                <div id="gateway-visa" onclick="selectGateway('visa')" class="payout-card cursor-pointer flex-1 h-[76px] rounded-[16px] p-3 flex flex-col justify-between bg-[#252a2e] text-white border border-white/5 hover:border-white/20">
+                  <span class="text-[11px] font-semibold opacity-90">*4443</span>
+                  <span class="text-[10.5px] opacity-65 font-medium">Visa</span>
+                </div>
+
+                <!-- Card 2: Stripe (Default Active & Taller) -->
+                <div id="gateway-stripe" onclick="selectGateway('stripe')" class="payout-card cursor-pointer flex-1 h-[92px] rounded-[16px] p-3 flex flex-col justify-between bg-limeAccent text-[#111415] shadow-lg shadow-limeAccent/10">
+                  <span class="text-[11px] font-bold">#177210</span>
+                  <span class="text-[10.5px] font-semibold">Stripe</span>
+                </div>
+
+                <!-- Card 3: PayPal -->
+                <div id="gateway-paypal" onclick="selectGateway('paypal')" class="payout-card cursor-pointer flex-1 h-[76px] rounded-[16px] p-3 flex flex-col justify-between bg-[#252a2e] text-white border border-white/5 hover:border-white/20">
+                  <span class="text-[11px] font-semibold opacity-90">#711221</span>
+                  <span class="text-[10.5px] opacity-65 font-medium">PayPal</span>
+                </div>
+              </div>
+
+              <!-- Pay Out Now White Pill Button -->
+              <button onclick="executeInstantPayout()" class="h-9 px-4 rounded-full bg-[#f4f5f7] hover:bg-white text-[#111415] font-bold text-[11.5px] shadow-md hover:scale-105 active:scale-95 transition-all shrink-0 mb-1">
+                Pay out now
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ==================== 4. ACTIVE FILTERS ROW (Fixed Height: 38px) ==================== -->
+        <div class="flex items-center justify-between gap-2.5 h-[38px] shrink-0 my-1.5">
+          <!-- Active Filters Label + Count Badge -->
+          <div class="flex items-center gap-2 shrink-0 pr-1">
+            <span class="text-[12.5px] text-gray-300 font-medium">Active filters</span>
+            <span id="activeFilterBadge" class="w-5 h-5 rounded-full bg-white text-[#111415] text-[11px] font-bold flex items-center justify-center">2</span>
+          </div>
+
+          <!-- Filter 1: Customer Dropdown -->
+          <div class="relative flex-1">
+            <select id="customerFilter" onchange="applyFilters()" class="w-full h-9 pl-3.5 pr-8 rounded-full bg-[#1c2022] border border-white/10 text-gray-300 text-[11.5px] font-medium appearance-none focus:outline-none focus:border-limeAccent/60 cursor-pointer">
+              <option value="all">All customers</option>
+              <option value="BlueRock">BlueRock Pvt Ltd</option>
+              <option value="Vertex">Vertex Global</option>
+              <option value="Aura">Aura Systems</option>
+              <option value="Lumina">Lumina AI</option>
+              <option value="Kinetix">Kinetix Cloud</option>
+            </select>
+            <svg class="w-3.5 h-3.5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </div>
+
+          <!-- Filter 2: Status Dropdown -->
+          <div class="relative flex-1">
+            <select id="statusFilter" onchange="applyFilters()" class="w-full h-9 pl-3.5 pr-8 rounded-full bg-[#1c2022] border border-white/10 text-gray-300 text-[11.5px] font-medium appearance-none focus:outline-none focus:border-limeAccent/60 cursor-pointer">
+              <option value="all">All statuses</option>
+              <option value="Unsent">Unsent</option>
+              <option value="Viewed">Viewed</option>
+              <option value="Scheduled">Scheduled</option>
+              <option value="Paid">Paid</option>
+            </select>
+            <svg class="w-3.5 h-3.5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </div>
+
+          <!-- Filter 3: Start Month Pill -->
+          <button onclick="cycleStartMonth()" class="flex-1 h-9 px-3.5 rounded-full bg-[#1c2022] border border-white/10 hover:border-white/25 text-gray-200 text-[11.5px] font-medium flex items-center justify-between transition-all">
+            <span id="startMonthLabel">November 2023</span>
+            <svg class="w-3.5 h-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+          </button>
+
+          <!-- Filter 4: End Month Pill -->
+          <button onclick="cycleEndMonth()" class="flex-1 h-9 px-3.5 rounded-full bg-[#1c2022] border border-white/10 hover:border-white/25 text-gray-200 text-[11.5px] font-medium flex items-center justify-between transition-all">
+            <span id="endMonthLabel">December 2023</span>
+            <svg class="w-3.5 h-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+          </button>
+
+          <!-- Filter 5: Live Search Input -->
+          <div class="relative flex-1">
+            <input id="searchInput" oninput="applyFilters()" type="text" placeholder="Enter invoice #" 
+                   class="w-full h-9 pl-3.5 pr-8 rounded-full bg-[#1c2022] border border-white/10 text-white placeholder-gray-500 text-[11.5px] font-medium focus:outline-none focus:border-limeAccent/70 transition-colors" />
+            <svg class="w-3.5 h-3.5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </div>
+        </div>
+
+        <!-- ==================== 5. BOTTOM WHITE SPLIT WORKSPACE WITH TOP-CENTER NOTCH ==================== -->
+        <!-- Strict Fixed Height (432px) so every menu/submenu stays identical in size while inner lists scroll -->
+        <div class="relative bg-[#f4f5f7] rounded-[30px] h-[432px] shrink-0 p-4 pt-5 flex flex-col justify-between overflow-hidden shadow-inner">
+          
+          <!-- TOP-CENTER INVERTED DARK NOTCH SUB-MENU TABS -->
+          <div id="subMenuNotch" class="center-notch-wrapper">
+            <!-- Dynamically populated sub-menu tabs -->
+          </div>
+
+          <!-- Top-Right Action Icons inside White Container -->
+          <div class="absolute top-3.5 right-4 flex items-center gap-1.5 z-10">
+            <button onclick="exportCurrentListCSV()" title="Export Sub-Menu Records" class="w-8 h-8 rounded-full bg-white hover:bg-gray-100 border border-gray-200/80 text-gray-700 flex items-center justify-center shadow-sm transition-transform active:scale-90">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="12" y1="18" x2="12" y2="12"></line>
+                <line x1="9" y1="15" x2="15" y2="15"></line>
+              </svg>
+            </button>
+            <button onclick="resetFilters()" title="Reset All Filters" class="w-8 h-8 rounded-full bg-white hover:bg-gray-100 border border-gray-200/80 text-gray-700 flex items-center justify-center shadow-sm transition-transform active:scale-90">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="5" r="1"></circle>
+                <circle cx="12" cy="12" r="1"></circle>
+                <circle cx="12" cy="19" r="1"></circle>
+              </svg>
+            </button>
+          </div>
+
+          <!-- SPLIT COLUMNS CONTAINER (Full height of white card) -->
+          <div class="grid grid-cols-12 gap-4 h-full pt-1 overflow-hidden">
+            
+            <!-- LEFT COLUMN: Scrollable Sub-Menu Item List (5 cols) -->
+            <div class="col-span-5 flex flex-col h-full overflow-hidden pl-1">
+              <div class="flex items-center justify-between mb-2.5 pr-2 shrink-0">
+                <h2 id="listSectionTitle" class="text-[15px] font-bold text-[#141718] tracking-tight">Unpaid Invoices</h2>
+                <span id="listCountIndicator" class="text-[11px] font-semibold text-gray-500 bg-gray-200/80 px-2 py-0.5 rounded-full">12 items • Scrollable</span>
+              </div>
+
+              <!-- FIXED HEIGHT SCROLLABLE CONTAINER FOR SUB-MENU ITEMS -->
+              <div id="scrollableItemList" class="custom-scroll flex-1 overflow-y-auto pr-1.5 space-y-1.5 pb-2">
+                <!-- Populated dynamically via JS -->
+              </div>
+            </div>
+
+            <!-- RIGHT COLUMN: Dark Detail Breakdown Card (7 cols) -->
+            <div class="col-span-7 h-full pt-6 overflow-hidden">
+              <div id="detailCardContainer" class="bg-[#181b1c] text-white rounded-[24px] h-full p-5 flex flex-col justify-between border border-black/20 shadow-xl overflow-hidden">
+                
+                <!-- Detail Card Top Header: ID, Company, Customer -->
+                <div class="grid grid-cols-12 gap-2 items-center shrink-0 pb-2 border-b border-white/[0.06]">
+                  <!-- Col 1: Invoice / Record Details -->
+                  <div class="col-span-5">
+                    <p id="detailTypeLabel" class="text-[11px] text-gray-400 font-medium mb-1">Invoice details</p>
+                    <div class="flex items-center gap-2.5">
+                      <span class="text-gray-400 text-lg font-normal">#</span>
+                      <span id="detailNumber" class="text-[22px] font-bold tracking-tight">427-012</span>
+                      <span id="detailStatusBadge" class="px-2.5 py-0.5 rounded-full bg-[#24292c] border border-white/10 text-[10.5px] text-gray-300 font-medium">Unsent</span>
+                    </div>
+                  </div>
+
+                  <!-- Col 2: Company Name & Geometric Logo -->
+                  <div class="col-span-4">
+                    <p class="text-[11px] text-gray-400 font-medium mb-1">Company</p>
+                    <div class="flex items-center gap-2">
+                      <span id="detailCompany" class="text-[19px] font-bold tracking-tight">BlueRock</span>
+                      <!-- Geometric Cube/Diamond Icon matching reference image -->
+                      <svg class="w-5 h-5 text-white shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2L4 7v10l8 5 8-5V7l-8-5zm0 2.3l5.6 3.5L12 11.3 6.4 7.8 12 4.3zm-6 5.3l5 3.1v6.2l-5-3.1V9.6zm7 9.3v-6.2l5-3.1v6.2l-5 3.1z"/>
+                      </svg>
+                    </div>
+                  </div>
+
+                  <!-- Col 3: Customer Avatar & Role -->
+                  <div class="col-span-3 flex flex-col items-start">
+                    <p class="text-[11px] text-gray-400 font-medium mb-1">Customer</p>
+                    <div class="flex items-center gap-2">
+                      <img id="detailAvatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80" 
+                           onerror="this.src='https://placehold.co/80x80/24292c/fff?text=MJ'"
+                           class="w-8 h-8 rounded-full object-cover ring-2 ring-limeAccent shrink-0" />
+                      <div class="min-w-0">
+                        <p id="detailCustomerName" class="text-[12px] font-bold text-white truncate">Maria Jones</p>
+                        <p id="detailCustomerRole" class="text-[10px] text-gray-400 truncate">CEO BlueRock Pvt Ltd</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Detail Card Middle: Scrollable Line Items / Milestones Grid -->
+                <div class="flex-1 overflow-y-auto custom-scroll-dark my-2.5 pr-1">
+                  <div id="detailLineItemsGrid" class="grid grid-cols-4 gap-2.5">
+                    <!-- Populated dynamically with line items + interactive '+' card -->
+                  </div>
+                </div>
+
+                <!-- Detail Card Bottom Summary Footer -->
+                <div class="bg-[#212528] rounded-[18px] px-4 py-2.5 flex items-center justify-between shrink-0 border border-white/[0.05]">
+                  <div class="flex items-center gap-7">
+                    <div>
+                      <p class="text-[10px] text-gray-400 font-medium">Sub Total</p>
+                      <p class="text-[14px] font-bold text-white"><span class="text-xs text-gray-400 font-normal mr-0.5">$</span><span id="detailSubTotal">53,154.00</span></p>
+                    </div>
+                    <div>
+                      <p class="text-[10px] text-gray-400 font-medium">Total</p>
+                      <p class="text-[14px] font-bold text-white"><span class="text-xs text-gray-400 font-normal mr-0.5">$</span><span id="detailTotal">53,154.00</span></p>
+                    </div>
+                    <div>
+                      <p class="text-[10px] text-gray-400 font-medium">Balance Due</p>
+                      <p class="text-[14px] font-bold text-white"><span class="text-xs text-gray-400 font-normal mr-0.5">$</span><span id="detailBalance">53,154.00</span></p>
+                    </div>
+                  </div>
+
+                  <!-- Action Icons & Neon Lime Button -->
+                  <div class="flex items-center gap-2">
+                    <button onclick="copyRecordLink()" title="Copy Direct Payment Link" class="w-8 h-8 rounded-full bg-[#2a2f33] hover:bg-[#343a3f] text-gray-300 hover:text-white flex items-center justify-center transition-all active:scale-90">
+                      <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                      </svg>
+                    </button>
+                    <button onclick="downloadInvoiceSummary()" title="Download PDF Statement" class="w-8 h-8 rounded-full bg-[#2a2f33] hover:bg-[#343a3f] text-gray-300 hover:text-white flex items-center justify-center transition-all active:scale-90">
+                      <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+                        <line x1="7" y1="8" x2="17" y2="8"></line>
+                        <line x1="7" y1="12" x2="17" y2="12"></line>
+                        <line x1="7" y1="16" x2="12" y2="16"></line>
+                      </svg>
+                    </button>
+                    <button id="detailPrimaryActionBtn" onclick="processSelectedRecordPayout()" class="h-8 px-4 rounded-full bg-limeAccent hover:bg-limeHover text-[#111415] font-bold text-[11.5px] shadow-md shadow-limeAccent/10 hover:scale-105 active:scale-95 transition-all">
+                      Pay out now
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ==================== INTERACTIVE MODALS & TOASTS (Inside Fixed Frame) ==================== -->
+      
+      <!-- 1. Create Record / Add Milestone Modal -->
+      <div id="modalOverlay" class="hidden absolute inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+        <div class="bg-[#1c2022] border border-white/15 rounded-[28px] w-full max-w-[460px] p-6 text-white shadow-2xl animate-menu-enter">
+          <div class="flex items-center justify-between mb-4">
+            <h3 id="modalTitle" class="text-lg font-bold">Create New Invoice</h3>
+            <button onclick="closeModal()" class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-gray-400 hover:text-white">✕</button>
+          </div>
+          <form id="modalForm" onsubmit="handleModalSubmit(event)" class="space-y-3.5">
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">Client / Company Name</label>
+              <input id="formCompany" type="text" required placeholder="e.g. BlueRock Pvt Ltd" class="w-full h-10 px-3.5 rounded-xl bg-[#141718] border border-white/10 text-sm text-white focus:outline-none focus:border-limeAccent" />
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs text-gray-400 mb-1">Contact Person</label>
+                <input id="formCustomer" type="text" required placeholder="e.g. Maria Jones" class="w-full h-10 px-3.5 rounded-xl bg-[#141718] border border-white/10 text-sm text-white focus:outline-none focus:border-limeAccent" />
+              </div>
+              <div>
+                <label class="block text-xs text-gray-400 mb-1">Due / Schedule</label>
+                <input id="formDue" type="text" required placeholder="e.g. In 7 days" class="w-full h-10 px-3.5 rounded-xl bg-[#141718] border border-white/10 text-sm text-white focus:outline-none focus:border-limeAccent" />
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs text-gray-400 mb-1">Service / Milestone Title</label>
+                <input id="formService" type="text" required placeholder="e.g. Cloud Architecture" class="w-full h-10 px-3.5 rounded-xl bg-[#141718] border border-white/10 text-sm text-white focus:outline-none focus:border-limeAccent" />
+              </div>
+              <div>
+                <label class="block text-xs text-gray-400 mb-1">Amount (USD)</label>
+                <input id="formAmount" type="number" step="0.01" required placeholder="24500.00" class="w-full h-10 px-3.5 rounded-xl bg-[#141718] border border-white/10 text-sm text-white focus:outline-none focus:border-limeAccent" />
+              </div>
+            </div>
+            <div class="pt-2 flex justify-end gap-2">
+              <button type="button" onclick="closeModal()" class="px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 text-xs font-semibold text-gray-300">Cancel</button>
+              <button type="submit" class="px-5 py-2 rounded-full bg-limeAccent hover:bg-limeHover text-[#111415] text-xs font-bold shadow-lg">Save & Add to List</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- 2. Add Milestone Line Item Modal -->
+      <div id="milestoneModalOverlay" class="hidden absolute inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+        <div class="bg-[#1c2022] border border-white/15 rounded-[28px] w-full max-w-[400px] p-6 text-white shadow-2xl animate-menu-enter">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-base font-bold">Add Breakdown Milestone</h3>
+            <button onclick="closeMilestoneModal()" class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-gray-400 hover:text-white">✕</button>
+          </div>
+          <form onsubmit="handleAddMilestoneSubmit(event)" class="space-y-3.5">
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">Milestone / Deliverable Title</label>
+              <input id="milestoneTitleInput" type="text" required placeholder="e.g. AI Copilot Deployment" class="w-full h-10 px-3.5 rounded-xl bg-[#141718] border border-white/10 text-sm text-white focus:outline-none focus:border-limeAccent" />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">Fee Amount ($)</label>
+              <input id="milestoneAmountInput" type="number" step="0.01" required placeholder="14200.00" class="w-full h-10 px-3.5 rounded-xl bg-[#141718] border border-white/10 text-sm text-white focus:outline-none focus:border-limeAccent" />
+            </div>
+            <div class="pt-2 flex justify-end gap-2">
+              <button type="button" onclick="closeMilestoneModal()" class="px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 text-xs font-semibold text-gray-300">Cancel</button>
+              <button type="submit" class="px-5 py-2 rounded-full bg-limeAccent hover:bg-limeHover text-[#111415] text-xs font-bold">Add Milestone</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- 3. Quick Info Popover Drawer -->
+      <div id="quickDrawer" class="hidden absolute top-16 right-8 w-80 bg-[#1c2022] border border-white/15 rounded-2xl p-4 text-white shadow-2xl z-40 animate-menu-enter">
+        <div class="flex items-center justify-between mb-1.5">
+          <h4 id="drawerTitle" class="text-xs font-bold text-limeAccent uppercase tracking-wider">Module Info</h4>
+          <button onclick="closeQuickDrawer()" class="text-gray-400 hover:text-white text-xs">✕</button>
+        </div>
+        <p id="drawerBody" class="text-xs text-gray-300 leading-relaxed"></p>
+      </div>
+
+      <!-- 4. Animated Toast Notification -->
+      <div id="toastBanner" class="pointer-events-none opacity-0 translate-y-4 transition-all duration-300 absolute bottom-6 left-1/2 -translate-x-1/2 bg-[#111415] border border-limeAccent/60 text-white px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-2.5 z-50">
+        <span class="w-2 h-2 rounded-full bg-limeAccent animate-ping"></span>
+        <span id="toastText" class="text-xs font-semibold tracking-wide">Action completed</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==================== APPLICATION DATA & LOGIC ==================== -->
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
